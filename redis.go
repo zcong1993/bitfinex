@@ -9,7 +9,7 @@ import (
 var redis *rds.Client
 
 const (
-	KEY = "bitfinex"
+	KEY    = "bitfinex"
 	TICKER = "ticker"
 )
 
@@ -17,7 +17,7 @@ func init() {
 	client := rds.NewClient(&rds.Options{
 		Addr:     os.Getenv("REDIS_URL"),
 		Password: os.Getenv("REDIS_PASSWORD"),
-		DB:       0,  // use default DB
+		DB:       0, // use default DB
 	})
 
 	_, err := client.Ping().Result()

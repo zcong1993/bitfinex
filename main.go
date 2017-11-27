@@ -2,18 +2,18 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"github.com/bitfinexcom/bitfinex-api-go/v2"
 	"log"
-	"time"
 	"sync"
-	"encoding/json"
+	"time"
 )
 
 // Bfx is bitfinex wrapper client
 type Bfx struct {
 	// Symbols are the ticker pairs you want to subscribe
 	Symbols []string
-	data Data
+	data    Data
 }
 
 // Data is tickers data for redis
@@ -30,9 +30,9 @@ type Data struct {
 // NewBfx create a Bfx instance
 func NewBfx(Symbols []string) *Bfx {
 	data := Data{
-		Ok: false,
-		Tickers:map[string][][]float64{},
-		Last:map[string]float64{},
+		Ok:      false,
+		Tickers: map[string][][]float64{},
+		Last:    map[string]float64{},
 	}
 	b := &Bfx{Symbols: Symbols, data: data}
 	go b.run()
@@ -98,7 +98,5 @@ func (bfx *Bfx) createTickerHandler(symbol string) func(ev interface{}) {
 
 func main() {
 	NewBfx(Symbols)
-	select {
-
-	}
+	select {}
 }
