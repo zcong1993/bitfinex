@@ -6,11 +6,11 @@ import (
 	"log"
 	"time"
 	"sync"
+	"encoding/json"
 )
 
 // Bfx is bitfinex wrapper client
 type Bfx struct {
-	mu sync.Mutex
 	// Symbols are the ticker pairs you want to subscribe
 	Symbols []string
 	data Data
@@ -18,6 +18,7 @@ type Bfx struct {
 
 // Data is tickers data for redis
 type Data struct {
+	mu sync.Mutex
 	// OK is if the data is available
 	Ok bool
 	// Tickers is the ticker data
@@ -81,11 +82,13 @@ func (bfx *Bfx) createTickerHandler(symbol string) func(ev interface{}) {
 		t, ok := ev.([][]float64)
 		if ok {
 			last := t[0][6]
-			bfx.mu.Lock()
+			bfx.data.mu.Lock()
 			bfx.data.Tickers[symbol] = t
 			bfx.data.Last[symbol] = last
 			bfx.data.Ok = true
-			bfx.mu.Unlock()
+			d, _ := json.Marshal(bfx.data)
+			redis.HSet(KEY, TICKER, string(d))
+			bfx.data.mu.Unlock()
 			log.Printf("PUBLIC MSG %s: %#v", symbol, last)
 		} else {
 			//log.Printf("PUBLIC MSG HEARTBEAT %s: %#v", symbol, ev)
