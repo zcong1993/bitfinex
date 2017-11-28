@@ -12,13 +12,14 @@ import (
 // Bfx is bitfinex wrapper client
 type Bfx struct {
 	// Symbols are the ticker pairs you want to subscribe
-	Symbols []string
-	data    Data
+	Symbols    []string
+	data       Data
+	orderbooks map[string]*Orderbook
 }
 
 // Data is tickers data for redis
 type Data struct {
-	mu sync.Mutex
+	mu *sync.Mutex
 	// OK is if the data is available
 	Ok bool
 	// Tickers is the ticker data
@@ -30,16 +31,30 @@ type Data struct {
 // NewBfx create a Bfx instance
 func NewBfx(Symbols []string) *Bfx {
 	data := Data{
+		mu:      new(sync.Mutex),
 		Ok:      false,
 		Tickers: map[string][][]float64{},
 		Last:    map[string]float64{},
 	}
-	b := &Bfx{Symbols: Symbols, data: data}
-	go b.run()
+	orderbooks := make(map[string]*Orderbook)
+	for _, symbol := range Symbols {
+		orderbook := &Orderbook{
+			mu:     new(sync.Mutex),
+			Symbol: symbol,
+			Bid:    SortableBook{},
+			Ask:    SortableBook{},
+			Ok:     false,
+			bidMap: make(map[float64][]float64),
+			askMap: make(map[float64][]float64),
+		}
+		orderbooks[symbol] = orderbook
+	}
+	b := &Bfx{Symbols: Symbols, data: data, orderbooks: orderbooks}
 	return b
 }
 
-func (bfx *Bfx) run() {
+// RunTicker can start the ticker handler
+func (bfx *Bfx) RunTicker() {
 	c := bitfinex.NewClient()
 	err := c.Websocket.Connect()
 	if err != nil {
@@ -71,7 +86,7 @@ func (bfx *Bfx) run() {
 		case <-c.Websocket.Done():
 			log.Printf("channel closed: %s", c.Websocket.Err())
 			bfx.data.Ok = false
-			bfx.run()
+			bfx.RunTicker()
 			return
 		}
 	}
@@ -97,6 +112,10 @@ func (bfx *Bfx) createTickerHandler(symbol string) func(ev interface{}) {
 }
 
 func main() {
-	NewBfx(Symbols)
+	//b := NewBfx(Symbols)
+	//go b.run()
+	b := NewBfx([]string{"BTCUSD", "LTCUSD"})
+	go b.RunTicker()
+	go b.RunOrderbook()
 	select {}
 }
