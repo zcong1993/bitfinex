@@ -39,7 +39,10 @@ func (bfx *Bfx) RunOrderbook() {
 	c := bitfinex.NewClient()
 	err := c.Websocket.Connect()
 	if err != nil {
-		log.Fatal("Error connecting to web socket : ", err)
+		log.Printf("Error connecting to web socket : %v", err)
+		bfx.data.Ok = false
+		bfx.orderbookDone <- struct{}{}
+		return
 	}
 	c.Websocket.SetReadTimeout(time.Second * 10)
 	c.Websocket.AttachEventHandler(func(ev interface{}) {
@@ -59,7 +62,9 @@ func (bfx *Bfx) RunOrderbook() {
 		h := bfx.createOrderbookHandler(symbol)
 		err = c.Websocket.Subscribe(ctx, msg, h)
 		if err != nil {
-			log.Fatal(err)
+			bfx.data.Ok = false
+			bfx.orderbookDone <- struct{}{}
+			return
 		}
 	}
 	for {
@@ -67,7 +72,7 @@ func (bfx *Bfx) RunOrderbook() {
 		case <-c.Websocket.Done():
 			log.Printf("channel closed: %s", c.Websocket.Err())
 			bfx.data.Ok = false
-			bfx.RunOrderbook()
+			bfx.orderbookDone <- struct{}{}
 			return
 		}
 	}
