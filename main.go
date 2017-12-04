@@ -126,12 +126,14 @@ func main() {
 	b := NewBfx([]string{"BTCUSD", "LTCUSD"}, tickerDone, orderbookDone)
 	go b.RunTicker()
 	go b.RunOrderbook()
-	select {
-	case <-tickerDone:
-		time.Sleep(reconnectInterval)
-		go b.RunTicker()
-	case <-orderbookDone:
-		time.Sleep(reconnectInterval)
-		go b.RunOrderbook()
+	for {
+		select {
+		case <-tickerDone:
+			time.Sleep(reconnectInterval)
+			go b.RunTicker()
+		case <-orderbookDone:
+			time.Sleep(reconnectInterval)
+			go b.RunOrderbook()
+		}
 	}
 }
