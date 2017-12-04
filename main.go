@@ -72,20 +72,22 @@ func (bfx *Bfx) RunTicker() {
 		log.Printf("EVENT: %#v", ev)
 	})
 	for _, symbol := range bfx.Symbols {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		defer cancel()
-		msg := &bitfinex.PublicSubscriptionRequest{
-			Event:   "subscribe",
-			Channel: bitfinex.ChanTicker,
-			Symbol:  bitfinex.TradingPrefix + symbol,
-		}
-		h := bfx.createTickerHandler(symbol)
-		err = c.Websocket.Subscribe(ctx, msg, h)
-		if err != nil {
-			bfx.data.Ok = false
-			bfx.tickerDone <- struct{}{}
-			return
-		}
+		go func(symbol string) {
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			defer cancel()
+			msg := &bitfinex.PublicSubscriptionRequest{
+				Event:   "subscribe",
+				Channel: bitfinex.ChanTicker,
+				Symbol:  bitfinex.TradingPrefix + symbol,
+			}
+			h := bfx.createTickerHandler(symbol)
+			err = c.Websocket.Subscribe(ctx, msg, h)
+			if err != nil {
+				bfx.data.Ok = false
+				bfx.tickerDone <- struct{}{}
+				return
+			}
+		}(symbol)
 	}
 	for {
 		select {
